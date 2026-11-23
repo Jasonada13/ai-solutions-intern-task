@@ -1,16 +1,17 @@
-name: Checks
+name: Starter checks
 on: [push, pull_request]
 permissions:
   contents: read
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.13']
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-python@v7
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
+          python-version: ${{ matrix.python-version }}
+      - run: python run.py --check-setup
+      - run: python -m unittest discover -s tests
