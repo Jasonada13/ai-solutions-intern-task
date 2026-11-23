@@ -1,6 +1,9 @@
-node_modules/
-.data/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 .DS_Store
 .env
 .env.*
-coverage/
+output/
+submission*.zip

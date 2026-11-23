@@ -1,0 +1,43 @@
+order_id,channel,status,gross_pence
+ O001 , WEB , completed ," 12000 "
+O002,app,COMPLETED,8500
+O003,partner,completed,20000
+O004,web,cancelled,4500
+O005,app,completed,6000
+O006,partner,completed,15000
+O007,web,completed,9500
+O008,app,cancelled,3000
+O009,partner,completed,12000
+O010,web,completed,7000
+O011,app,completed,11000
+O012,web,completed,5000
+O013,web,completed,13000
+O014,web,completed,4000
+O015,partner,cancelled,2500
+O016,web,completed,16000
+O017,app,completed,9000
+O018,partner,completed,7500
+O019,web,completed,5500
+O020,app,completed,10000
+ CaseA ,partner,completed,8000
+casea,web,completed,6500
+O021,web,completed,0003500
+O022,partner,completed,14000
+O023,web,completed,0
+O024,mobile,completed,5600
+O025,app,pending,7000
+O026,web,completed,-2500
+O027,app,completed,12.50
+O028,partner,completed,+4000
+,web,completed,5000
+O029,app,completed,１２３４
+ O001 ,partner,completed,99000
+O002,web,cancelled,16000
+O030,web,completed,
+O031,partner,completed,1_000
+O023,web,completed,2500
+ O024 ,app,completed,5600
+O025,partner,completed,7000
+O032, ,completed,3500
+O033,web,,4200
+O034,app,completed,1 000
