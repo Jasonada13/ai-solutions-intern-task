@@ -2,6 +2,8 @@
 
 Help an online retailer decide which sales channel deserves investigation. Clean an order export in Python, calculate channel metrics in SQL, and explain what the results mean.
 
+Download the [Technical task presentation](docs/technical-task.pptx) for a plain-English overview.
+
 Plan for about 60 minutes including reading, coding, and notes. This is a guide, not a limit. Spend as long as you choose. Elapsed time, extra features, and visual polish do not earn points.
 
 ## Start
