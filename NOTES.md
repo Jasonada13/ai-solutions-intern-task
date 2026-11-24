@@ -1,19 +1,17 @@
 # Submission notes
 
-Replace these prompts with at most 200 words in total.
+Replace these prompts with at most 200 words total. You can identify unfinished work within the same note.
 
-## Business recommendation
+## Business decision
 
-Choose one channel to investigate. Cite two values from your summary, propose one concrete action, and give one limitation of the data or conclusion.
+A manager proposes moving marketing budget to the channel with the largest `net_pence`. Does your corrected report justify that decision? Cite two corrected result values, propose a justified next action, and state one limitation. Write for a reader who does not know Python or SQL.
 
-## Scale
+## Verification and scale
 
-At 100 million orders, identify one bottleneck in this approach. Propose one change and explain its tradeoff.
+Describe one change and the test or other evidence that supports it. At 100 million orders, identify one bottleneck, propose a change, and explain its tradeoff.
 
 ## Working method
 
-Describe one specific check or correction and its evidence, including your automated test.
+If you used AI, name the tool and model if known, its purpose, one output you verified or corrected, and why the model suited the task. Otherwise, describe your manual reasoning and one output you checked.
 
-If you used AI, name the tool and model if known, its purpose, and one output you verified or corrected. Explain why that model suited the task. If you did not use AI, describe your manual reasoning and verification.
-
-Token counts, calls, and costs are optional and only useful if available. Label estimates or unknowns. Do not include chat logs or credentials.
+Token usage and cost are optional. Label estimates or unknowns. Do not include chat logs, credentials, or personal details.

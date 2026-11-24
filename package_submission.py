@@ -5,24 +5,29 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 FILES = (
     "README.md", "DATA.md", "NOTES.md", "LICENSE",
-    "solution.py", "analysis.sql", "run.py", "package_submission.py",
+    "models.py", "solution.py", "analysis.sql", "run.py", "package_submission.py",
     "tests/test_scaffold.py", "tests/test_candidate.py",
-    "data/orders.csv", "data/refunds.csv", "output/summary.csv",
+    "data/order_events.csv", "data/refunds.csv",
+    "output/summary.csv", "output/quality.json",
 )
 
 
 def build_archive(root: Path) -> Path:
     archive = root / "submission.zip"
     archive.unlink(missing_ok=True)
-    for name in FILES:
-        path = root / name
-        if not path.is_file():
-            raise ValueError(f"Missing {name}. Complete the task and run python3 run.py before packaging.")
-        if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
-            raise ValueError(f"{name} must be a regular file inside the task folder.")
-    with ZipFile(archive, "w", compression=ZIP_DEFLATED) as submission:
+    try:
         for name in FILES:
-            submission.write(root / name, arcname=name)
+            path = root / name
+            if not path.is_file():
+                raise ValueError(f"Missing {name}. Run python3 run.py before packaging.")
+            if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
+                raise ValueError(f"{name} must be a regular file inside the task folder.")
+        with ZipFile(archive, "w", compression=ZIP_DEFLATED) as submission:
+            for name in FILES:
+                submission.write(root / name, arcname=name)
+    except Exception:
+        archive.unlink(missing_ok=True)
+        raise
     return archive
 
 
