@@ -1,32 +1,49 @@
 from typing import NamedTuple
 
 
-class OrderEvent(NamedTuple):
+class RawOrder(NamedTuple):
     order_id: str
-    revision: int
-    received_at: str
-    ordered_at: str
+    period: str
     channel: str
     status: str
-    gross_pence: int
+    product_id: str
+    quantity: str
+    gross_pence: str
+    fulfilment_cost_pence: str
 
 
 class Order(NamedTuple):
     order_id: str
-    ordered_at: str
+    period: str
     channel: str
     status: str
+    product_id: str
+    quantity: int
     gross_pence: int
+    fulfilment_cost_pence: int
 
 
-class Snapshot(NamedTuple):
-    orders: list[Order]
-    conflicted_order_ids: list[str]
+class Product(NamedTuple):
+    product_id: str
+    category: str
+    unit_cost_pence: int
 
 
 class Refund(NamedTuple):
     refund_id: str
     order_id: str
     refund_pence: int
-    occurred_at: str
-    received_at: str
+
+
+class QualityCounts(NamedTuple):
+    input_rows: int
+    accepted_orders: int
+    duplicate_rows: int
+    rejected_rows: int
+    invalid_values: int
+    unknown_product: int
+
+
+class PreparedOrders(NamedTuple):
+    orders: list[Order]
+    quality: QualityCounts

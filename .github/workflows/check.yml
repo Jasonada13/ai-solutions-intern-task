@@ -15,3 +15,5 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: python run.py --check-setup
       - run: python -m unittest discover -s tests
+      - run: python run.py --check-repro --orders 2000
+      - run: python package_submission.py

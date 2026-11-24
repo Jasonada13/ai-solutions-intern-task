@@ -1,118 +1,155 @@
+"""Supplied plumbing checks. These do not certify the candidate's business logic."""
+import contextlib
 import csv
 import io
 import json
+import shutil
 import tempfile
 import unittest
-from contextlib import redirect_stderr
 from pathlib import Path
 from unittest.mock import patch
 from zipfile import ZipFile
 
-from models import OrderEvent, Refund
+import run
+from generate_data import generate_data, sha256
+from models import Order, Product, RawOrder, Refund
 from package_submission import FILES, build_archive
-from run import SUMMARY_COLUMNS, load_data, main, query_summary, write_quality, write_summary
+from report import business_notes, render_report
+
+ROOT = Path(__file__).resolve().parents[1]
+EMPTY_QUERY = "SELECT " + ", ".join(
+    ("'baseline'" if i == 0 else "'web'" if i == 1 else "'home'" if i == 2 else "0")
+    + f" AS {name}" for i, name in enumerate(run.COLUMNS)) + " WHERE 0"
 
 
-def make_package_files(root):
+def copy_task(folder):
+    root = Path(folder)
     for name in FILES:
-        path = root / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("test file", encoding="utf-8")
+        if not name.startswith("output/"):
+            destination = root / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / name, destination)
+    return root
 
 
 class TestScaffold(unittest.TestCase):
-    def test_fixtures_load_as_typed_records(self):
-        events, refunds = load_data()
-        self.assertTrue(events)
-        self.assertTrue(refunds)
-        self.assertTrue(all(isinstance(row, OrderEvent) for row in events))
-        self.assertTrue(all(isinstance(row.revision, int) for row in events))
-        self.assertTrue(all(isinstance(row.gross_pence, int) for row in events))
-        self.assertTrue(all(isinstance(row, Refund) for row in refunds))
-        self.assertTrue(all(isinstance(row.refund_pence, int) for row in refunds))
+    def test_generator_repeatable_with_manifest_counts(self):
+        with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
+            one = generate_data(Path(first), 200, 7)
+            two = generate_data(Path(second), 200, 7)
+            self.assertEqual(one, two)
+            for name, meta in one.items():
+                path = Path(first) / name
+                with path.open(newline="", encoding="utf-8") as source:
+                    self.assertEqual(sum(1 for _ in csv.reader(source)) - 1, meta["rows"])
+                self.assertEqual(meta["sha256"], sha256(path))
+            self.assertEqual(len(list(run.iter_orders(Path(first) / "orders.csv"))), one["orders.csv"]["rows"])
+            self.assertTrue(all(isinstance(p, Product) for p in run.load_products(Path(first) / "products.csv")))
+            self.assertTrue(all(isinstance(r, Refund) for r in run.iter_refunds(Path(first) / "refunds.csv")))
 
-    def test_empty_summary_has_header(self):
+    def test_generator_empty_and_negative(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "summary.csv"
-            write_summary(path, [])
-            with path.open(newline="") as handle:
-                self.assertEqual(list(csv.reader(handle)), [list(SUMMARY_COLUMNS)])
+            result = generate_data(Path(folder), 0, 42)
+            self.assertEqual(result["orders.csv"]["rows"], 0)
+            self.assertEqual(result["refunds.csv"]["rows"], 0)
+            with self.assertRaises(ValueError):
+                generate_data(Path(folder), -1, 42)
 
-    def test_summary_formats_rate(self):
+    def test_reader_rejects_wrong_header_or_width(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "summary.csv"
-            write_summary(path, [("web", 3, 900, 100, 800, 1, 1 / 3)])
-            with path.open(newline="") as handle:
-                rows = list(csv.reader(handle))
-            self.assertEqual(rows[1], ["web", "3", "900", "100", "800", "1", "0.3333"])
+            path = Path(folder) / "orders.csv"
+            path.write_text("incorrect\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                list(run.iter_orders(path))
+            path.write_text(",".join(RawOrder._fields) + "\nonly,three,values\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                list(run.iter_orders(path))
 
-    def test_summary_rejects_fractional_money(self):
+    def test_query_helper_empty_schema_and_file_database(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "summary.csv"
-            with self.assertRaisesRegex(ValueError, "must be integers"):
-                write_summary(path, [("web", 3, 900.5, 100, 800.5, 1, 1 / 3)])
+            database = Path(folder) / "nested/task.sqlite"
+            for _ in range(2):
+                self.assertEqual(run.query_summary([], [], [], EMPTY_QUERY, db_path=database), [])
+                self.assertTrue(database.is_file())
 
-    def test_quality_writes_supplied_ids(self):
+    def test_query_helper_rejects_wrong_columns_or_types(self):
+        with self.assertRaises(ValueError):
+            run.query_summary([], [], [], "SELECT 1")
+        wrong_type = EMPTY_QUERY.removesuffix(" WHERE 0").replace("0 AS gross_pence", "0.5 AS gross_pence")
+        with self.assertRaises(ValueError):
+            run.query_summary([], [], [], wrong_type)
+
+    def test_business_notes_excludes_prompts_and_technical_section(self):
+        notes = "## Business recommendation\n<!-- Guidance -->\nA business action.\n## Method and scale\nPrivate technical method"
+        self.assertEqual(business_notes(notes), "A business action.")
+
+    def test_report_empty_zero_negative_and_escaping(self):
+        quality = dict.fromkeys(("input_rows", "accepted_orders", "duplicate_rows", "rejected_rows", "invalid_values", "unknown_product"), 0)
+        empty = render_report(run.COLUMNS, [], quality, "")
+        self.assertIn("Recommendation not supplied.", empty)
+        self.assertIn("No completed orders were returned", empty)
+        self.assertIn("n/a", empty)
+        rows = [("current", "<script>alert(1)</script>", "home&away", 1, 100, 100, 0, 100, 50, -150, 1)]
+        html = render_report(run.COLUMNS, rows, quality,
+                             "## Business recommendation\n<img src=x onerror=alert(2)>\n## Method and scale\nSECRET METHOD")
+        self.assertNotIn("<script>", html)
+        self.assertNotIn("<img", html)
+        self.assertNotIn("SECRET METHOD", html)
+        self.assertIn("&lt;img", html)
+        self.assertIn("home&amp;away", html)
+        self.assertIn("−£1.50", html)
+
+    def test_pipeline_proof_manifest_and_archive(self):
         with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "quality.json"
-            write_quality(path, ["example"])
-            self.assertEqual(json.loads(path.read_text()), {"conflicted_order_ids": ["example"]})
-
-    def test_query_helper_binds_context(self):
-        query = """
-            SELECT :as_of AS channel, 0 AS completed_orders, 0 AS gross_pence,
-                   0 AS refund_pence, 0 AS net_pence, 0 AS refunded_orders,
-                   0.0 AS refund_rate
-            WHERE :period_start = 'start' AND :period_end = 'end'
-        """
-        self.assertEqual(
-            query_summary([], [], query, as_of="cutoff", period_start="start", period_end="end"),
-            [("cutoff", 0, 0, 0, 0, 0, 0.0)],
-        )
-
-    def test_query_helper_rejects_wrong_columns(self):
-        with self.assertRaisesRegex(ValueError, "must return these columns"):
-            query_summary([], [], "SELECT 1")
-
-    def test_failed_run_removes_both_stale_outputs(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            paths = [root / "output/summary.csv", root / "output/quality.json"]
-            paths[0].parent.mkdir()
-            for path in paths:
-                path.write_text("stale", encoding="utf-8")
-            with patch("run.ROOT", root), patch("sys.argv", ["run.py", "--as-of", "invalid"]):
-                with redirect_stderr(io.StringIO()):
-                    self.assertEqual(main(), 1)
-            self.assertTrue(all(not path.exists() for path in paths))
-
-    def test_package_requires_both_outputs(self):
-        for missing in ("output/summary.csv", "output/quality.json"):
-            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as folder:
-                root = Path(folder)
-                make_package_files(root)
-                (root / missing).unlink()
-                (root / "submission.zip").write_text("stale", encoding="utf-8")
-                with self.assertRaisesRegex(ValueError, f"Missing {missing}"):
-                    build_archive(root)
-                self.assertFalse((root / "submission.zip").exists())
-
-    def test_package_uses_only_task_files(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            make_package_files(root)
-            (root / ".env").write_text("dummy secret", encoding="utf-8")
+            root = copy_task(folder)
+            with patch.object(run, "ROOT", root), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(run.main(["--orders", "0", "--check-repro"]), 0)
+            output = root / "output"
+            proof = json.loads((output / "reproducibility.json").read_text())
+            manifest = json.loads((output / "manifest.json").read_text())
+            self.assertIs(proof["matched"], True)
+            self.assertEqual(proof["hashes"], {name: sha256(output / name) for name in run.COMPARED_FILES})
+            self.assertEqual(manifest["base_orders"], 0)
+            self.assertEqual(set(manifest["candidate_files"]), set(run.CANDIDATE_FILES))
+            self.assertEqual((output / "summary.csv").read_text().splitlines(), [",".join(run.COLUMNS)])
             with ZipFile(build_archive(root)) as archive:
                 self.assertEqual(set(archive.namelist()), set(FILES))
-
-    def test_package_removes_partial_archive(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            make_package_files(root)
-            with patch.object(ZipFile, "write", side_effect=OSError("write failed")):
-                with self.assertRaisesRegex(OSError, "write failed"):
-                    build_archive(root)
+                self.assertFalse(any(name.startswith("data/") and name.endswith(".csv") for name in archive.namelist()))
+            (root / "NOTES.md").write_text("changed notes", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                build_archive(root)
             self.assertFalse((root / "submission.zip").exists())
+
+    def test_failure_and_single_run_remove_stale_proof(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = copy_task(folder)
+            with patch.object(run, "ROOT", root), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(run.main(["--orders", "0", "--check-repro"]), 0)
+                self.assertEqual(run.main(["--orders", "0"]), 0)
+                self.assertFalse((root / "output/reproducibility.json").exists())
+                (root / "analysis.sql").write_text("invalid SQL", encoding="utf-8")
+                self.assertEqual(run.main(["--orders", "0"]), 1)
+                self.assertFalse(any((root / "output" / name).exists() for name in run.OUTPUT_FILES))
+                self.assertEqual(run.main(["--orders", "-1"]), 1)
+
+    def test_repro_mismatch_does_not_leave_outputs(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = copy_task(folder)
+            with patch.object(run, "ROOT", root), patch.object(run, "run_once", side_effect=[{"a": "one"}, {"a": "two"}]), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(run.main(["--orders", "0", "--check-repro"]), 1)
+                self.assertFalse(any((root / "output" / name).exists() for name in run.OUTPUT_FILES))
+
+    def test_archive_missing_file_and_symlink_remove_stale_zip(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = copy_task(folder)
+            (root / "submission.zip").write_bytes(b"stale")
+            with self.assertRaises(ValueError):
+                build_archive(root)
+            self.assertFalse((root / "submission.zip").exists())
+            (root / "README.md").unlink()
+            (root / "README.md").symlink_to(ROOT / "README.md")
+            with self.assertRaisesRegex(ValueError, "regular file"):
+                build_archive(root)
 
 
 if __name__ == "__main__":

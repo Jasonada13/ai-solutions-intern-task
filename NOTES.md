@@ -1,17 +1,18 @@
-# Submission notes
+# Your notes
 
-Replace these prompts with at most 200 words total. You can identify unfinished work within the same note.
+Keep the two section headings below. Replace the guidance comments with plain paragraphs: up to 200 words for the business recommendation and 100 words for method and scale. Only the business section appears in the stakeholder report.
 
-## Business decision
+## Business recommendation
 
-A manager proposes moving marketing budget to the channel with the largest `net_pence`. Does your corrected report justify that decision? Cite two corrected result values, propose a justified next action, and state one limitation. Write for a reader who does not know Python or SQL.
+<!-- Explain the period change using at least two corrected figures. -->
+<!-- Identify a material channel/category segment, recommend an action and quantify an illustrative opportunity. -->
+<!-- State its assumption or limitation. A scenario is not a forecast or proof of causality. -->
+<!-- If your work is incomplete, identify the result you cannot yet rely on. -->
 
-## Verification and scale
+## Method and scale
 
-Describe one change and the test or other evidence that supports it. At 100 million orders, identify one bottleneck, propose a change, and explain its tradeoff.
-
-## Working method
-
-If you used AI, name the tool and model if known, its purpose, one output you verified or corrected, and why the model suited the task. Otherwise, describe your manual reasoning and one output you checked.
-
-Token usage and cost are optional. Label estimates or unknowns. Do not include chat logs, credentials, or personal details.
+<!-- Describe one correction and a check that supports it. -->
+<!-- Describe your AI or manual method: model if known, purpose and an output you verified. -->
+<!-- Identify a bottleneck, proposed change and tradeoff at five million orders. -->
+<!-- Token/cost figures are optional; distinguish estimates from known values. -->
+<!-- Do not include personal information, credentials or chat logs. -->
