@@ -1,17 +1,24 @@
+"""Repair this runnable starter using the rules in DATA.md."""
 from collections.abc import Iterable
 
-from models import Order, OrderEvent, Snapshot
+from models import Order, PreparedOrders, QualityCounts, RawOrder
 
 
-def reconcile_orders(events: Iterable[OrderEvent], as_of: str) -> Snapshot:
-    """Repair this starter to follow the snapshot rules in DATA.md."""
+def prepare_orders(rows: Iterable[RawOrder], product_ids: set[str]) -> PreparedOrders:
     latest = {}
-    for event in events:
-        latest[event.order_id] = Order(
-            event.order_id,
-            event.ordered_at,
-            event.channel,
-            event.status,
-            event.gross_pence,
-        )
-    return Snapshot(list(latest.values()), [])
+    input_rows = 0
+    invalid_values = 0
+    for row in rows:
+        input_rows += 1
+        try:
+            order = Order(*row[:5], int(row.quantity), int(row.gross_pence),
+                          int(row.fulfilment_cost_pence))
+        except ValueError:
+            invalid_values += 1
+            continue
+        latest[row.order_id] = order
+    orders = sorted(latest.values(), key=lambda order: order.order_id)
+    return PreparedOrders(orders, QualityCounts(
+        input_rows, len(orders), input_rows - len(orders) - invalid_values,
+        invalid_values, invalid_values, 0,
+    ))

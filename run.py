@@ -1,143 +1,174 @@
+"""Supplied offline pipeline. Candidate business calculations belong in analysis.sql."""
 import argparse
 import csv
 import json
+import platform
 import sqlite3
 import sys
+import tempfile
 from collections.abc import Iterable
-from contextlib import closing
-from datetime import datetime
 from pathlib import Path
 
-from models import Order, OrderEvent, Refund
-
+from generate_data import DEFAULT_ORDERS, DEFAULT_SEED, GENERATOR_VERSION, PERIODS, generate_data, sha256
+from models import Order, Product, RawOrder, Refund
+from report import render_report
 
 ROOT = Path(__file__).resolve().parent
-PERIOD_START = "2026-05-01T00:00:00Z"
-PERIOD_END = "2026-06-01T00:00:00Z"
-AS_OF = "2026-06-05T00:00:00Z"
-SUMMARY_COLUMNS = (
-    "channel", "completed_orders", "gross_pence", "refund_pence",
-    "net_pence", "refunded_orders", "refund_rate",
+COLUMNS = (
+    "period", "channel", "category", "completed_orders", "gross_pence", "refund_pence",
+    "net_revenue_pence", "product_cost_pence", "fulfilment_cost_pence",
+    "contribution_pence", "refunded_orders",
 )
+CANDIDATE_FILES = ("solution.py", "analysis.sql", "tests/test_candidate.py", "NOTES.md")
+COMPARED_FILES = ("summary.csv", "quality.json", "report.html", "manifest.json")
+OUTPUT_FILES = (*COMPARED_FILES, "reproducibility.json")
+SCHEMA = """
+CREATE TABLE orders (
+    order_id TEXT PRIMARY KEY, period TEXT NOT NULL, channel TEXT NOT NULL,
+    status TEXT NOT NULL, product_id TEXT NOT NULL, quantity INTEGER NOT NULL,
+    gross_pence INTEGER NOT NULL, fulfilment_cost_pence INTEGER NOT NULL
+);
+CREATE TABLE products (
+    product_id TEXT PRIMARY KEY, category TEXT NOT NULL, unit_cost_pence INTEGER NOT NULL
+);
+CREATE TABLE refunds (
+    refund_id TEXT NOT NULL, order_id TEXT NOT NULL, refund_pence INTEGER NOT NULL
+);
+CREATE INDEX refunds_order_id ON refunds(order_id);
+"""
 
 
-def load_csv(path: Path, columns: tuple[str, ...]) -> list[dict[str, str]]:
-    with path.open(encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        if not set(columns).issubset(reader.fieldnames or []):
-            raise ValueError(f"{path.name} is missing required headers: {', '.join(columns)}")
-        return list(reader)
+def iter_csv(path: Path, fields: tuple[str, ...]):
+    with path.open(newline="", encoding="utf-8") as source:
+        reader = csv.reader(source)
+        if next(reader, None) != list(fields):
+            raise ValueError(f"Unexpected columns in {path.name}")
+        for line, row in enumerate(reader, 2):
+            if len(row) != len(fields):
+                raise ValueError(f"Unexpected field count in {path.name}, line {line}")
+            yield row
 
 
-def load_data() -> tuple[list[OrderEvent], list[Refund]]:
-    rows = load_csv(ROOT / "data/order_events.csv", OrderEvent._fields)
-    events = [OrderEvent(
-        row["order_id"], int(row["revision"]), row["received_at"],
-        row["ordered_at"], row["channel"], row["status"], int(row["gross_pence"]),
-    ) for row in rows]
-    rows = load_csv(ROOT / "data/refunds.csv", Refund._fields)
-    refunds = [Refund(
-        row["refund_id"], row["order_id"], int(row["refund_pence"]),
-        row["occurred_at"], row["received_at"],
-    ) for row in rows]
-    return events, refunds
+def iter_orders(path: Path) -> Iterable[RawOrder]:
+    return (RawOrder(*row) for row in iter_csv(path, RawOrder._fields))
 
 
-def query_summary(
-    orders: Iterable[Order],
-    refunds: Iterable[Refund],
-    query: str,
-    *,
-    as_of: str = AS_OF,
-    period_start: str = PERIOD_START,
-    period_end: str = PERIOD_END,
-) -> list[tuple]:
-    with closing(sqlite3.connect(":memory:")) as database:
-        database.executescript("""
-            CREATE TABLE orders (
-                order_id TEXT PRIMARY KEY,
-                ordered_at TEXT,
-                channel TEXT,
-                status TEXT,
-                gross_pence INTEGER
-            );
-            CREATE TABLE refunds (
-                refund_id TEXT,
-                order_id TEXT,
-                refund_pence INTEGER,
-                occurred_at TEXT,
-                received_at TEXT
-            );
-        """)
-        database.executemany("INSERT INTO orders VALUES (?, ?, ?, ?, ?)", orders)
-        database.executemany("INSERT INTO refunds VALUES (?, ?, ?, ?, ?)", refunds)
-        cursor = database.execute(query, {
-            "as_of": as_of, "period_start": period_start, "period_end": period_end,
-        })
-        if cursor.description is None:
-            raise ValueError("analysis.sql must contain one SELECT query. See DATA.md.")
-        columns = tuple(column[0] for column in cursor.description)
-        if columns != SUMMARY_COLUMNS:
-            raise ValueError(f"analysis.sql must return these columns in order: {', '.join(SUMMARY_COLUMNS)}")
-        return cursor.fetchall()
+def load_products(path: Path) -> list[Product]:
+    return [Product(row[0], row[1], int(row[2])) for row in iter_csv(path, Product._fields)]
 
 
-def write_summary(path: Path, rows: list[tuple]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, lineterminator="\n")
-        writer.writerow(SUMMARY_COLUMNS)
-        for row in rows:
-            integers = [int(value) for value in row[1:6]]
-            if any(integer != value for integer, value in zip(integers, row[1:6])):
-                raise ValueError("Counts and money in the SQL result must be integers.")
-            writer.writerow([row[0], *integers, f"{row[6]:.4f}"])
+def iter_refunds(path: Path) -> Iterable[Refund]:
+    return (Refund(row[0], row[1], int(row[2])) for row in iter_csv(path, Refund._fields))
 
 
-def write_quality(path: Path, conflicted_order_ids: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"conflicted_order_ids": conflicted_order_ids}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Build the channel report at a knowledge cutoff.")
-    parser.add_argument("--check-setup", action="store_true", help="Check Python, SQLite, and fixture loading without running your solution.")
-    parser.add_argument("--as-of", default=AS_OF, help="Knowledge cutoff in YYYY-MM-DDTHH:MM:SSZ format.")
-    args = parser.parse_args()
-    summary_path = ROOT / "output/summary.csv"
-    quality_path = ROOT / "output/quality.json"
+def query_summary(orders: Iterable[Order], refunds: Iterable[Refund],
+                  products: Iterable[Product], query: str, *, db_path: Path | None = None) -> list[tuple]:
+    """Run candidate SQL against the same schema used by the full pipeline."""
+    if db_path is not None:
+        db_path = Path(db_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        db_path.unlink(missing_ok=True)
+    connection = sqlite3.connect(":memory:" if db_path is None else str(db_path))
     try:
-        if not args.check_setup:
-            for path in (summary_path, quality_path):
-                path.unlink(missing_ok=True)
-        timestamp_format = "%Y-%m-%dT%H:%M:%SZ"
-        if datetime.strptime(args.as_of, timestamp_format).strftime(timestamp_format) != args.as_of:
-            raise ValueError("--as-of must use YYYY-MM-DDTHH:MM:SSZ format.")
-        events, refunds = load_data()
+        connection.executescript(SCHEMA)
+        with connection:
+            connection.executemany("INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?, ?)", orders)
+            connection.executemany("INSERT INTO products VALUES (?, ?, ?)", products)
+            connection.executemany("INSERT INTO refunds VALUES (?, ?, ?)", refunds)
+        cursor = connection.execute(query)
+        if cursor.description is None or tuple(col[0] for col in cursor.description) != COLUMNS:
+            raise ValueError("SQL must return the exact columns listed in DATA.md")
+        rows = cursor.fetchall()
+        for row in rows:
+            if any(not isinstance(value, str) for value in row[:3]):
+                raise ValueError("SQL period, channel and category must be text")
+            if any(type(value) is not int for value in row[3:]):
+                raise ValueError("SQL counts and money must be integers, not NULL or decimals")
+        return rows
+    finally:
+        connection.close()
+
+
+def write_json(path: Path, value) -> None:
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def clear_outputs(root: Path) -> None:
+    for name in OUTPUT_FILES:
+        (root / "output" / name).unlink(missing_ok=True)
+
+
+def run_once(root: Path, *, base_orders: int, seed: int) -> dict[str, str]:
+    from solution import prepare_orders
+
+    inputs = generate_data(root / "data", base_orders, seed)
+    products = load_products(root / "data/products.csv")
+    prepared = prepare_orders(iter_orders(root / "data/orders.csv"), {p.product_id for p in products})
+    query = (root / "analysis.sql").read_text(encoding="utf-8")
+    rows = query_summary(prepared.orders, iter_refunds(root / "data/refunds.csv"), products,
+                         query, db_path=root / "output/analysis.sqlite")
+    output = root / "output"
+    output.mkdir(exist_ok=True)
+    with (output / "summary.csv").open("w", encoding="utf-8", newline="") as destination:
+        writer = csv.writer(destination, lineterminator="\n")
+        writer.writerow(COLUMNS)
+        writer.writerows(rows)
+    quality = prepared.quality._asdict()
+    write_json(output / "quality.json", quality)
+    notes = (root / "NOTES.md").read_text(encoding="utf-8")
+    (output / "report.html").write_text(render_report(COLUMNS, rows, quality, notes), encoding="utf-8")
+    manifest = {
+        "generator_version": GENERATOR_VERSION, "seed": seed, "base_orders": base_orders,
+        "periods": PERIODS, "inputs": inputs,
+        "environment": {"python": platform.python_version(), "sqlite": sqlite3.sqlite_version},
+        "candidate_files": {name: sha256(root / name) for name in CANDIDATE_FILES},
+        "outputs": {name: sha256(output / name) for name in COMPARED_FILES[:3]},
+    }
+    write_json(output / "manifest.json", manifest)
+    return {name: sha256(output / name) for name in COMPARED_FILES}
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Generate data and rebuild the technical task outputs offline.")
+    parser.add_argument("--orders", type=int, default=DEFAULT_ORDERS, help="base orders (default: 200000)")
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check-setup", action="store_true", help="check environment and generator only")
+    mode.add_argument("--check-repro", action="store_true", help="repeat pipeline and compare artifact bytes")
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as error:
+        if error.code:
+            clear_outputs(ROOT)
+        raise
+    if not args.check_setup:
+        clear_outputs(ROOT)
+    try:
+        if sys.version_info < (3, 10):
+            raise ValueError("Python 3.10 or newer is required")
+        if args.orders < 0:
+            raise ValueError("--orders must be zero or positive")
         if args.check_setup:
-            with closing(sqlite3.connect(":memory:")) as database:
-                database.execute("SELECT 1").fetchone()
-            print("Setup OK. Fixtures and SQLite are available. This does not check your answer.")
+            with tempfile.TemporaryDirectory() as folder:
+                generated = generate_data(Path(folder), 200, args.seed)
+                if generated["orders.csv"]["rows"] != 204:
+                    raise ValueError("Generator setup check failed")
+            print(f"Setup ready: Python {platform.python_version()}, SQLite {sqlite3.sqlite_version}. No packages needed.")
+            print("This checks setup, not the correctness of the starter or your answer.")
             return 0
-
-        from solution import reconcile_orders
-
-        snapshot = reconcile_orders(iter(events), args.as_of)
-        query = (ROOT / "analysis.sql").read_text(encoding="utf-8")
-        rows = query_summary(snapshot.orders, refunds, query, as_of=args.as_of)
-        write_summary(summary_path, rows)
-        write_quality(quality_path, snapshot.conflicted_order_ids)
+        first = run_once(ROOT, base_orders=args.orders, seed=args.seed)
+        if args.check_repro:
+            second = run_once(ROOT, base_orders=args.orders, seed=args.seed)
+            if first != second:
+                raise ValueError("Repeated outputs differ; no reproducibility record was created")
+            write_json(ROOT / "output/reproducibility.json", {"matched": True, "hashes": second})
+            print("Two runs produced identical summary, quality, report and manifest bytes.")
+        print("Outputs written to output/. Open report.html. Reproducibility does not establish correctness.")
+        return 0
     except Exception as error:
-        if not args.check_setup:
-            for path in (summary_path, quality_path):
-                path.unlink(missing_ok=True)
-        print(f"Unable to create report: {error}", file=sys.stderr)
+        clear_outputs(ROOT)
+        print(f"Pipeline failed: {error}", file=sys.stderr)
         return 1
-    print("Created output/summary.csv and output/quality.json. Check both before submitting.")
-    return 0
 
 
 if __name__ == "__main__":
