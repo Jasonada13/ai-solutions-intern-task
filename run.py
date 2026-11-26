@@ -1,4 +1,4 @@
-"""Supplied offline pipeline. Candidate business calculations belong in analysis.sql."""
+"""Generate data and run the analysis. Keep business calculations in analysis.sql."""
 import argparse
 import csv
 import json
@@ -63,7 +63,7 @@ def iter_refunds(path: Path) -> Iterable[Refund]:
 
 def query_summary(orders: Iterable[Order], refunds: Iterable[Refund],
                   products: Iterable[Product], query: str, *, db_path: Path | None = None) -> list[tuple]:
-    """Run candidate SQL against the same schema used by the full pipeline."""
+    """Run candidate SQL using the full pipeline's database schema."""
     if db_path is not None:
         db_path = Path(db_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -129,12 +129,12 @@ def run_once(root: Path, *, base_orders: int, seed: int) -> dict[str, str]:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Generate data and rebuild the technical task outputs offline.")
-    parser.add_argument("--orders", type=int, default=DEFAULT_ORDERS, help="base orders (default: 200000)")
+    parser = argparse.ArgumentParser(description="Generate data and rebuild the task's output files offline.")
+    parser.add_argument("--orders", type=int, default=DEFAULT_ORDERS, help="number of base orders, default 200000")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check-setup", action="store_true", help="check environment and generator only")
-    mode.add_argument("--check-repro", action="store_true", help="repeat pipeline and compare artifact bytes")
+    mode.add_argument("--check-repro", action="store_true", help="run twice and compare output files")
     try:
         args = parser.parse_args(argv)
     except SystemExit as error:
@@ -153,17 +153,17 @@ def main(argv=None) -> int:
                 generated = generate_data(Path(folder), 200, args.seed)
                 if generated["orders.csv"]["rows"] != 204:
                     raise ValueError("Generator setup check failed")
-            print(f"Setup ready: Python {platform.python_version()}, SQLite {sqlite3.sqlite_version}. No packages needed.")
-            print("This checks setup, not the correctness of the starter or your answer.")
+            print(f"Setup ready. Python {platform.python_version()}, SQLite {sqlite3.sqlite_version}. No extra packages needed.")
+            print("Setup checks do not validate your calculations.")
             return 0
         first = run_once(ROOT, base_orders=args.orders, seed=args.seed)
         if args.check_repro:
             second = run_once(ROOT, base_orders=args.orders, seed=args.seed)
             if first != second:
-                raise ValueError("Repeated outputs differ; no reproducibility record was created")
+                raise ValueError("The two runs produced different files. No reproducibility record was saved.")
             write_json(ROOT / "output/reproducibility.json", {"matched": True, "hashes": second})
             print("Two runs produced identical summary, quality, report and manifest bytes.")
-        print("Outputs written to output/. Open report.html. Reproducibility does not establish correctness.")
+        print("Files are in output/. Open output/report.html to view the report. Matching runs can still contain calculation errors.")
         return 0
     except Exception as error:
         clear_outputs(ROOT)

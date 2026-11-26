@@ -1,4 +1,4 @@
-"""Package the technical evidence and explicitly selected business report files."""
+"""Build the submission ZIP, including any selected report files."""
 import argparse
 import json
 import sys
@@ -64,7 +64,7 @@ def build_archive(root: Path, *, business_report: str | Path | None = None,
             if normalized in destinations or any(
                     normalized.startswith(existing + "/") or existing.startswith(normalized + "/")
                     for existing in destinations):
-                raise ValueError(f"Archive destinations conflict: {name}")
+                raise ValueError(f"Two files would use conflicting paths in the ZIP: {name}")
             destinations.add(normalized)
         archive.unlink(missing_ok=True)
         for name in FILES:
@@ -84,7 +84,7 @@ def build_archive(root: Path, *, business_report: str | Path | None = None,
         if manifest.get("candidate_files") != source_hashes:
             raise ValueError("Candidate files changed after the run. Run python3 run.py --check-repro again.")
         if manifest.get("outputs") != {name: expected[name] for name in ("summary.csv", "quality.json", "report.html")}:
-            raise ValueError("Manifest does not match the output files. Run python3 run.py --check-repro again.")
+            raise ValueError("The output hashes in manifest.json do not match the files. Run python3 run.py --check-repro again.")
         with ZipFile(archive, "w", compression=ZIP_DEFLATED) as submission:
             for name in FILES:
                 submission.write(root / name, arcname=name)
@@ -97,9 +97,9 @@ def build_archive(root: Path, *, business_report: str | Path | None = None,
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Package technical evidence and an optional business report.")
-    parser.add_argument("--business-report", metavar="PATH", help="primary report file in your chosen format")
-    parser.add_argument("--report-preview", metavar="PATH", help="optional readable preview; requires --business-report")
+    parser = argparse.ArgumentParser(description="Create submission.zip with your code, results and optional report.")
+    parser.add_argument("--business-report", metavar="PATH", help="business report file in any format")
+    parser.add_argument("--report-preview", metavar="PATH", help="readable report preview, requires --business-report")
     root = Path(__file__).resolve().parent
     try:
         args = parser.parse_args(argv)
@@ -112,7 +112,7 @@ def main(argv=None) -> int:
     except (OSError, ValueError, AttributeError) as error:
         print(f"Unable to package submission: {error}", file=sys.stderr)
         return 1
-    print(f"Created {archive.name}. Email it through your recruiter invitation or reply channel.")
+    print(f"Created {archive.name}. Send it by email using the instructions in your invitation.")
     return 0
 
 

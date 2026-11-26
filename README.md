@@ -1,16 +1,16 @@
 # Technical task
 
-Investigate a retailer's performance using Python and SQL, then explain what the business should do next. This is a practical exercise in turning imperfect data into a reproducible result that senior staff can use.
+Use Python and SQL to investigate a retailer's performance, then recommend what the business should do next. Your results should be reproducible and useful to senior staff.
 
-**Allow about one hour, including reading and notes. This is a guide, not a hard limit.** You may spend longer. Working partial submissions receive credit for the evidence they contain. We reward clear, useful communication; speed, extra features and a particular file format earn no automatic bonus.
+Allow about one hour, including reading and notes. There is no hard time limit. Working partial submissions receive credit for the evidence they contain. We assess clear, useful communication. Speed, extra features and file format earn no automatic bonus.
 
 ## The business question
 
-An online retailer's senior team wants to understand **why sales increased while contribution weakened, and what to do next**. Compare two equal periods: 1–28 May 2026 (`baseline`) and 1–28 June 2026 (`current`). Both have the same completed 30-day refund follow-up.
+An online retailer's senior team wants to understand why sales increased while contribution weakened, and what to do next. Compare two equal periods. The `baseline` covers 1 to 28 May 2026, and `current` covers 1 to 28 June 2026. Both have the same completed 30-day refund follow-up.
 
-You will work with 200,000 generated base orders, plus repeated deliveries, invalid rows, products and refunds. This is a substantial laptop-sized dataset. You do not need cloud infrastructure or a distributed system.
+You will work with 200,000 generated base orders, plus repeated deliveries, invalid rows, products and refunds. The dataset fits on a laptop without cloud infrastructure or distributed processing.
 
-Contribution means net revenue minus product and fulfilment costs. It excludes fixed overhead, tax and acquisition spend, so it is **not profit**. All data is synthetic and all money is in GBP pence.
+Contribution means net revenue minus product and fulfilment costs. It excludes fixed overhead, tax and acquisition spend, so it is not profit. All data is synthetic. All money is in GBP pence.
 
 ## Start here
 
@@ -23,13 +23,13 @@ python3 run.py --check-repro
 
 On Windows, use `python` or `py` in place of `python3` if needed.
 
-The supplied pipeline generates CSVs, prepares orders, builds a local SQLite database, runs the SQL and creates a self-contained report. **The starter runs, but its data preparation and SQL results are deliberately wrong.** Setup, scaffold tests and a successful repeat run do not establish correctness.
+The supplied pipeline generates CSVs, prepares orders, builds a local SQLite database, runs the SQL and creates a self-contained report. The starter runs with deliberately incorrect data preparation and SQL. Setup checks, supplied tests and a successful repeat run do not prove the results are correct.
 
 Read [DATA.md](DATA.md) for the exact rules, types and output columns. Open `output/report.html` in a browser to see the supplied report layout.
 
 ## Your work
 
-Make your code and notes changes in these four files. You may also add your own business report and an optional preview:
+Make your code and notes changes in these four files. You may also add a business report and preview:
 
 | File | What to do |
 | --- | --- |
@@ -38,26 +38,26 @@ Make your code and notes changes in these four files. You may also add your own 
 | `tests/test_candidate.py` | Add at least one Python test and one SQL test, each using small independent inputs and a hand-calculated expected result. Each should catch a plausible error. |
 | `NOTES.md` | Give your business recommendation or identify your separate report, then explain your method using the supplied headings. |
 
-The generator, database loading, HTML report, reproducibility check and ZIP packaging are supplied. You can use the supplied HTML report or present your findings in a format you choose, including **PowerPoint or Power BI**. Building a separate report is optional.
+The generator, database loading, HTML report, reproducibility check and ZIP packaging are supplied. You can use the HTML report or choose another format. PowerPoint and Power BI are encouraged where they help explain your findings. A separate report is optional.
 
-A suggested hour is 10 minutes to read and run the starter, 25 minutes for Python and SQL, 10 minutes for tests, and 15 minutes for the recommendation, final run and packaging. Prioritize a result you can explain. If something remains unfinished, say what it is in your notes and submit a working partial result.
+Suggested timing is 10 minutes to read and run the starter, 25 minutes for Python and SQL, 10 minutes for tests, and 15 minutes for the recommendation, final run and packaging. Prioritize a result you can explain. Note any unfinished work and submit a working partial result.
 
 ## Explain the result
 
-Prepare a brief business report for a nontechnical senior reader: roughly **200 words, a few slides or one focused dashboard**. Explain the period change, cite at least two corrected result values, identify a material channel/category segment, recommend an action and quantify one illustrative opportunity. State the assumption or limitation behind that estimate.
+Prepare a brief report for a nontechnical senior reader. Explain the period change, cite at least two corrected result values, identify a material channel/category segment, recommend an action and quantify one illustrative opportunity. State the assumption or limitation behind your estimate.
 
 Choose either route:
 
-- **Supplied HTML report:** write up to 200 words under **Business recommendation** in `NOTES.md`. The pipeline includes them in `output/report.html` alongside the calculated results.
-- **Your own report:** use any file format that communicates the findings well. PowerPoint and Power BI are welcome. Under **Business recommendation**, identify its archived filename, for example `business-report/Performance report.pptx`, instead of repeating the narrative in your notes. Submit an actual file, not only a public or account-gated link. If it needs specialist software, we recommend a readable PDF or image preview. If the report needs multiple files, put them in one ZIP and submit that as the report.
+- Use the supplied HTML report. Write up to 200 words under `Business recommendation` in `NOTES.md`. The pipeline includes this text in `output/report.html` alongside the results.
+- Submit your own report in any file format. Under `Business recommendation`, give its archived filename, such as `business-report/Performance report.pptx`, rather than repeating the narrative. Submit an actual file; a link alone is insufficient. If the report needs multiple files, put them in one ZIP and submit that as the report. For formats that need specialist software, a readable PDF or image preview is recommended and optional.
 
-Keep a separate report concise, for example a few slides or one focused dashboard; it has no fixed word limit. The 200-word limit applies only to an inline recommendation in `NOTES.md`. Clarity, evidence and usefulness to the reader are assessed within the existing business value and communication score. Useful charts, clear slides or focused dashboard interactions can strengthen that score. Choosing a particular tool or file extension does not earn extra points.
+Keep a separate report concise, such as a few slides or one focused dashboard. It has no fixed word limit. The 200-word limit applies only to the inline recommendation in `NOTES.md`. We assess clarity, evidence and usefulness within the business value and communication score. Charts, slides and dashboard interactions can improve that score when they help the reader. The tool and file extension earn no extra points.
 
-One possible scenario is the current refund value minus the current gross sales multiplied by the baseline refund-to-gross ratio for a chosen segment, holding sales and other costs fixed. A negative result is not a saving. Another coherent, supported scenario is welcome. A scenario is not a forecast, a realized saving or evidence that one factor caused the change.
+For one possible scenario, choose a segment and subtract current gross sales multiplied by its baseline refund-to-gross ratio from its current refund value. Hold sales and other costs fixed. A negative result is not a saving. You may use another supported scenario. Treat the estimate as an illustration, not a forecast, realized saving or proof of causality.
 
-In **Method and scale**, use up to **100 words**. Describe one correction and how you checked it, your AI or manual method, and one bottleneck, proposed change and tradeoff at **five million orders**. If you used AI, name the model if known, its purpose and an output you verified. Token or cost figures are optional; label estimates or unknown values honestly.
+Use up to 100 words under `Method and scale`. Describe one correction and how you checked it, your AI or manual method, and one bottleneck, proposed change and tradeoff at five million orders. If you used AI, name the model if known, its purpose and an output you verified. Token or cost figures are optional. Label estimates and unknown values.
 
-You may use your own AI tools. We do not supply AI access or credits, and paid access earns no advantage. You remain responsible for the submitted work and should be able to explain it. Do not include credentials, chat logs or personal information in the files.
+Your own AI tools are optional. We do not supply AI access or credits, and paid access earns no advantage. You are responsible for your work and should be able to explain it. Exclude credentials, chat logs and personal information.
 
 ## Verify and submit privately
 
@@ -81,9 +81,9 @@ You can also include a preview, for example for a Power BI report:
 python3 package_submission.py --business-report "reports/Performance report.pbix" --report-preview "reports/Performance preview.pdf"
 ```
 
-Replace the example paths with your files. Relative paths resolve from the task folder. `--report-preview` requires `--business-report`. The report is copied unchanged into `business-report/<filename>` and the preview into `business-report/preview/<filename>` inside the submission ZIP. They can share a filename because they occupy separate folders. Update the report filename in `NOTES.md` before the final `--check-repro` run.
+Replace the example paths with your files. Relative paths resolve from the task folder. `--report-preview` requires `--business-report`. The packager copies the report unchanged into `business-report/<filename>` and the preview into `business-report/preview/<filename>` inside the ZIP. They may share a filename because they occupy separate folders. Update the report filename in `NOTES.md` before the final `--check-repro` run.
 
-The required final pipeline command is `python3 run.py --check-repro`. It compares the summary, quality counts, report and manifest byte for byte across two complete runs. It writes a reproducibility record only when they match. Repeatability is evidence that the process is stable; it does not prove the answers are right.
+Run `python3 run.py --check-repro` before packaging. It compares the summary, quality counts, report and manifest byte for byte across two complete runs. It writes a reproducibility record only when they match. Matching outputs confirm repeatability. Use your tests to check the calculations.
 
 The five output files are:
 
@@ -95,11 +95,11 @@ The five output files are:
 | `output/manifest.json` | Input, code and output hashes, dataset settings and environment versions. |
 | `output/reproducibility.json` | The successful two-run comparison. |
 
-Email **`submission.zip`** using the recruiter invitation or reply channel. **Do not publish answers through a public fork, pull request or issue.** The ZIP contains the code, SQL, tests, documentation, notes, five generated output files and any report/preview explicitly supplied to the packager. A working partial submission also needs the reproducibility record.
+Email `submission.zip` privately using the recruiter invitation or reply channel. Keep your answers out of public forks, pull requests and issues. The ZIP contains code, SQL, tests, documentation, notes, five generated output files and any report and preview you passed to the packager. Working partial submissions also need the reproducibility record.
 
-The five technical output files remain required whichever report format you choose. Someone extracting the ZIP can regenerate them and the data with the documented command, without network access. A separately authored report and preview are preserved byte for byte, but are not regenerated by the pipeline. Check that they agree with your final results.
+All five output files are required whichever report format you choose. Someone extracting the ZIP can regenerate them and the data with the documented command, without network access. The pipeline does not regenerate a separate report or preview. Check that these files agree with your final results.
 
-The default package excludes raw CSVs, the database, large logs, credentials, Git history and this repository's management PowerPoint. **Your own PowerPoint is included when you pass it with `--business-report`.** Explicitly selected report and preview files are included unchanged.
+The default package excludes raw CSVs, the database, large logs, credentials, Git history and this repository's management PowerPoint. To include your own PowerPoint, pass it with `--business-report`. The packager preserves selected report and preview files unchanged.
 
 `python3 run.py` performs one full run and removes any previous reproducibility record. Both run modes remove stale generated outputs if the pipeline fails. You can use `--orders` and `--seed` to try alternate data; use the default dataset for your submitted result.
 
@@ -113,6 +113,6 @@ The default package excludes raw CSVs, the database, large logs, credentials, Gi
 | Verification and reproducibility | 15 |
 | Tool and scale judgment | 10 |
 
-Reviewers look for correct reasoning, supported recommendations and meaningful verification. Automated checks and AI-assisted technical review may help inspect the submitted work. Human reviewers award partial credit and make shortlist decisions. Shortlisted candidates may be asked to explain their approach to both technical and nontechnical audiences.
+Reviewers assess your reasoning, recommendations and verification. They may use automated checks and AI-assisted technical review. Human reviewers award partial credit and make shortlist decisions. Shortlisted candidates may be asked to explain their approach to technical and nontechnical audiences.
 
-This is assessment version 4.1; the data generator remains version `v4`. The [previous assessment](https://github.com/Jasonada13/ai-solutions-intern-task/tree/assessment-v3) is retained for reference. A [management overview](docs/technical-task.pptx) is also available.
+A [management overview](docs/technical-task.pptx) is also available.

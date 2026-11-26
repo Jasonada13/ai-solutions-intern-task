@@ -1,4 +1,4 @@
-"""Supplied plumbing checks. These do not certify the candidate's business logic."""
+"""Tests for the supplied pipeline. Candidate tests cover the business calculations."""
 import contextlib
 import csv
 import io
@@ -90,7 +90,7 @@ class TestScaffold(unittest.TestCase):
         quality = dict.fromkeys(("input_rows", "accepted_orders", "duplicate_rows", "rejected_rows", "invalid_values", "unknown_product"), 0)
         empty = render_report(run.COLUMNS, [], quality, "")
         self.assertIn("Recommendation not supplied.", empty)
-        self.assertIn("No completed orders were returned", empty)
+        self.assertIn("The query returned no completed orders", empty)
         self.assertIn("n/a", empty)
         rows = [("current", "<script>alert(1)</script>", "home&away", 1, 100, 100, 0, 100, 50, -150, 1)]
         html = render_report(run.COLUMNS, rows, quality,
