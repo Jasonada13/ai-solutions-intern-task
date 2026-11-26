@@ -1,10 +1,10 @@
 # Data and calculation rules
 
-Use these rules for both your implementation and your tests. There are no additional business rules to discover. The generator and pipeline are supplied; repair only the four files listed in the [README](README.md).
+Use these rules for both your implementation and your tests. There are no additional business rules to discover. The generator and pipeline are supplied. Make code and notes changes in the four files listed in the [README](README.md); you may also add a separate business report and optional preview.
 
 ## Dataset
 
-`python3 run.py --check-repro` generates the default data locally with generator version `v4`, seed `42` and `200000` base orders. Of the base orders, 45% belong to `baseline` and 55% to `current`. There are additional duplicate order deliveries and invalid rows, about 1% of each, as well as products and refund records. The manifest records exact file row counts and SHA-256 hashes.
+`python3 run.py --check-repro` generates the default data locally with generator version `v4`, seed `42` and `200000` base orders. Of the base orders, 45% belong to `baseline` and 55% to `current`. There are additional duplicate order deliveries and invalid rows, about 1% of each, as well as products and refund records. The default contains 204,000 order rows, 54,312 refund deliveries and 16 products. The manifest records exact file row counts and SHA-256 hashes. Assessment version 4.1 changes report submission options, not the generator or calculation rules.
 
 | Period | Sales dates | Refund coverage |
 | --- | --- | --- |
@@ -102,4 +102,8 @@ For small SQL tests, the supplied `query_summary(orders, refunds, products, quer
 
 The report sums additive segment metrics into overall period comparisons. Contribution margin is total contribution divided by total net revenue; refund ratio is total refunds divided by total gross sales. These are ratios of totals, not averages of segment ratios. The report handles zero denominators and negative values, and includes segment changes, quality counts and only the **Business recommendation** section of `NOTES.md`. Candidate text is escaped rather than executed as HTML.
 
+You can use this supplied HTML as your business report or submit a separate file, including PowerPoint or Power BI, as described in the [README](README.md). With a separate report, the business section of `NOTES.md` identifies its archived filename instead of repeating its narrative. The generated HTML remains one of the five required technical output files.
+
 The manifest records generator settings, periods, input row counts and hashes, Python/SQLite versions, the four candidate file hashes and summary/quality/report hashes. Paths are relative; stable outputs contain no timestamps, elapsed times or local usernames. The reproducibility record compares summary, quality, report and manifest across two full runs. Reproduction requires the same inputs, code and environment; reproducibility alone does not establish business correctness.
+
+A report supplied through `package_submission.py --business-report "PATH"` is copied unchanged into `business-report/<filename>` in the submission ZIP. An optional `--report-preview "PATH"` is copied into `business-report/preview/<filename>`. These separately authored files are preserved, not regenerated or covered by the pipeline's two-run comparison. The five generated technical artifacts still reproduce as described above. A preview requires a report. Submit actual files, with a readable PDF or image preview recommended when specialist software is needed; a link alone is insufficient.

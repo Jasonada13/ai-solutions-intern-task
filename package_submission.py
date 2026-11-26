@@ -1,7 +1,10 @@
-"""Package a small, self-contained private email submission."""
+"""Package the technical evidence and explicitly selected business report files."""
+import argparse
 import json
 import sys
+import unicodedata
 from pathlib import Path
+from typing import NamedTuple
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from generate_data import sha256
@@ -15,10 +18,55 @@ FILES = (
 )
 
 
-def build_archive(root: Path) -> Path:
+class ReportAttachment(NamedTuple):
+    source: Path
+    archive_name: str
+
+
+def report_attachments(root: Path, business_report: str | Path | None,
+                       report_preview: str | Path | None) -> list[ReportAttachment]:
+    if report_preview is not None and business_report is None:
+        raise ValueError("--report-preview requires --business-report.")
+    attachments = []
     archive = root / "submission.zip"
-    archive.unlink(missing_ok=True)
+    for selected, prefix in ((business_report, "business-report"),
+                             (report_preview, "business-report/preview")):
+        if selected is None:
+            continue
+        path = Path(selected)
+        if not path.is_absolute():
+            path = root / path
+        if any(part.is_symlink() for part in (path, *path.parents)):
+            raise ValueError(f"Report attachment must not use a symlink: {selected}")
+        if path.resolve() == archive.resolve() or (
+                path.exists() and archive.exists() and path.samefile(archive)):
+            raise ValueError("submission.zip cannot also be a report attachment.")
+        if not path.is_file() or path.stat().st_size == 0:
+            raise ValueError(f"Report attachment must be a regular, nonempty file: {selected}")
+        name = path.name
+        if name.rstrip(" .") != name or any(
+                char in "/\\:" or unicodedata.category(char) == "Cc" for char in name):
+            raise ValueError(f"Report attachment has an unsafe filename: {name!r}")
+        attachments.append(ReportAttachment(path, f"{prefix}/{name}"))
+    return attachments
+
+
+def build_archive(root: Path, *, business_report: str | Path | None = None,
+                  report_preview: str | Path | None = None) -> Path:
+    root = root.resolve()
+    archive = root / "submission.zip"
     try:
+        attachments = report_attachments(root, business_report, report_preview)
+        names = [*FILES, *(item.archive_name for item in attachments)]
+        destinations = set()
+        for name in names:
+            normalized = name.casefold()
+            if normalized in destinations or any(
+                    normalized.startswith(existing + "/") or existing.startswith(normalized + "/")
+                    for existing in destinations):
+                raise ValueError(f"Archive destinations conflict: {name}")
+            destinations.add(normalized)
+        archive.unlink(missing_ok=True)
         for name in FILES:
             path = root / name
             if not path.is_file():
@@ -40,15 +88,27 @@ def build_archive(root: Path) -> Path:
         with ZipFile(archive, "w", compression=ZIP_DEFLATED) as submission:
             for name in FILES:
                 submission.write(root / name, arcname=name)
+            for attachment in attachments:
+                submission.write(attachment.source, arcname=attachment.archive_name)
     except Exception:
         archive.unlink(missing_ok=True)
         raise
     return archive
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Package technical evidence and an optional business report.")
+    parser.add_argument("--business-report", metavar="PATH", help="primary report file in your chosen format")
+    parser.add_argument("--report-preview", metavar="PATH", help="optional readable preview; requires --business-report")
+    root = Path(__file__).resolve().parent
     try:
-        archive = build_archive(Path(__file__).resolve().parent)
+        args = parser.parse_args(argv)
+    except SystemExit as error:
+        if error.code:
+            (root / "submission.zip").unlink(missing_ok=True)
+        raise
+    try:
+        archive = build_archive(root, business_report=args.business_report, report_preview=args.report_preview)
     except (OSError, ValueError, AttributeError) as error:
         print(f"Unable to package submission: {error}", file=sys.stderr)
         return 1

@@ -1,10 +1,11 @@
 # Your notes
 
-Keep the two section headings below. Replace the guidance comments with plain paragraphs: up to 200 words for the business recommendation and 100 words for method and scale. Only the business section appears in the stakeholder report.
+Keep the two section headings below. For the supplied HTML report, replace the business guidance comments with up to 200 words. For a separate report, replace them with its archived filename, for example `business-report/Performance report.pptx`; do not duplicate the narrative here. Keep a separate report concise, for example a few slides or one focused dashboard; it has no fixed word limit. Method and scale remains limited to 100 words. Only the business section appears in the supplied HTML report.
 
 ## Business recommendation
 
 <!-- Explain the period change using at least two corrected figures. -->
+<!-- These requirements apply whether you use this section or a separate report such as PowerPoint or Power BI. -->
 <!-- Identify a material channel/category segment, recommend an action and quantify an illustrative opportunity. -->
 <!-- State its assumption or limitation. A scenario is not a forecast or proof of causality. -->
 <!-- If your work is incomplete, identify the result you cannot yet rely on. -->
