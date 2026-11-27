@@ -101,7 +101,7 @@ Email `submission.zip` privately using the recruiter invitation or reply channel
 
 All five output files are required whichever report format you choose. Someone extracting the ZIP can regenerate them and the data with the documented command, without network access. The pipeline does not regenerate a separate report or preview. Check that these files agree with your final results.
 
-The default package excludes raw CSVs, the database, large logs, credentials, Git history and this repository's hiring team PDF and management PowerPoint. To include your own PowerPoint, pass it with `--business-report`. The packager preserves selected report and preview files unchanged.
+The default package excludes raw CSVs, the database, large logs, credentials, Git history and this repository's PDF and PowerPoint overviews. To include your own PowerPoint, pass it with `--business-report`. The packager preserves selected report and preview files unchanged.
 
 `python3 run.py` performs one full run and removes any previous reproducibility record. Both run modes remove stale generated outputs if the pipeline fails. You can use `--orders` and `--seed` to try alternate data; use the default dataset for your submitted result.
 
@@ -117,4 +117,4 @@ The default package excludes raw CSVs, the database, large logs, credentials, Gi
 
 Reviewers assess your reasoning, recommendations and verification. They may use automated checks and AI-assisted technical review. Human reviewers award partial credit and make shortlist decisions. Shortlisted candidates may be asked to explain their approach to technical and nontechnical audiences.
 
-A [hiring team brief](docs/hiring-team-brief.pdf) summarises the task and assessment criteria. A [management overview](docs/technical-task.pptx) is also available.
+A [task overview](docs/technical-task.pdf) summarises the instructions and assessment criteria. A [PowerPoint overview](docs/technical-task.pptx) is also available.
