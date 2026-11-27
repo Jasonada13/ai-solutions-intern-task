@@ -1,4 +1,3 @@
-"""Render the performance report from SQL results and candidate notes."""
 from html import escape
 
 ADDITIVE = (
@@ -51,13 +50,13 @@ def render_report(columns, rows, quality, notes: str) -> str:
     baseline, current = totals["baseline"], totals["current"]
     metrics = (
         ("Gross sales", "gross_pence", money),
-        ("Refunds", "refund_pence", money),
+        ("Customer credits", "refund_pence", money),
         ("Net revenue", "net_revenue_pence", money),
-        ("Product costs", "product_cost_pence", money),
+        ("Part costs", "product_cost_pence", money),
         ("Fulfilment costs", "fulfilment_cost_pence", money),
         ("Contribution", "contribution_pence", money),
         ("Completed orders", "completed_orders", lambda n: f"{n:,}"),
-        ("Refunded orders", "refunded_orders", lambda n: f"{n:,}"),
+        ("Orders with customer credits", "refunded_orders", lambda n: f"{n:,}"),
     )
     overall = []
     for label, key, fmt in metrics:
@@ -66,7 +65,7 @@ def render_report(columns, rows, quality, notes: str) -> str:
                        f"<td>{delta(after - before, fmt)}</td><td>{ratio(after - before, abs(before))}</td></tr>")
     for label, numerator, denominator in (
         ("Contribution margin", "contribution_pence", "net_revenue_pence"),
-        ("Refunds / gross sales", "refund_pence", "gross_pence"),
+        ("Customer credits / gross sales", "refund_pence", "gross_pence"),
     ):
         before = ratio(baseline[numerator], baseline[denominator])
         after = ratio(current[numerator], current[denominator])
@@ -81,7 +80,7 @@ def render_report(columns, rows, quality, notes: str) -> str:
     for (channel, category), periods in ordered:
         before, after = periods["baseline"], periods["current"]
         segment_rows.append(
-            f"<tr><th scope='row'>{escape(channel)} / {escape(category)}</th>"
+            f"<tr><th scope='row'>{escape(channel.replace('_', ' '))} / {escape(category)}</th>"
             f"<td>{money(before['net_revenue_pence'])}</td><td>{money(after['net_revenue_pence'])}</td>"
             f"<td>{money(before['contribution_pence'])}</td><td>{money(after['contribution_pence'])}</td>"
             f"<td>{delta(after['contribution_pence'] - before['contribution_pence'], money)}</td>"
@@ -110,7 +109,7 @@ def render_report(columns, rows, quality, notes: str) -> str:
     quality_labels = {
         "input_rows": "Raw order rows", "accepted_orders": "Accepted orders, including cancelled",
         "duplicate_rows": "Duplicate order deliveries", "rejected_rows": "Rejected order rows",
-        "invalid_values": "Rejected for invalid values", "unknown_product": "Rejected for unknown products",
+        "invalid_values": "Rejected for invalid values", "unknown_product": "Rejected for unknown parts",
     }
     quality_rows = "".join(f"<tr><th scope='row'>{label}</th><td>{int(quality[key]):,}</td></tr>"
                            for key, label in quality_labels.items())
@@ -126,15 +125,15 @@ header{{padding-bottom:20px}}.eyebrow{{color:#087e8b;text-transform:uppercase;le
 section{{background:white;border:1px solid #d9e2e8;border-radius:12px;padding:24px;margin:20px 0}}p{{margin:8px 0 16px}}.muted,small{{color:#516675}}.notice{{padding:16px;background:#fff4db;border-left:4px solid #ac7622}}
 .scroll{{overflow-x:auto}}table{{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}}th,td{{padding:12px 10px;border-bottom:1px solid #e4eaf0;text-align:right;white-space:nowrap}}th:first-child{{text-align:left}}thead th{{background:#eff5f7;font-size:12px;white-space:normal}}tbody th{{font-weight:500}}.narrative{{white-space:pre-wrap}}svg{{width:100%;height:auto;min-width:600px}}svg text{{font:12px system-ui,sans-serif;fill:#172c3b}}footer{{font-size:13px;color:#516675}}@media print{{body{{background:white}}main{{padding:0}}section{{break-inside:avoid}}}}
 </style></head><body><main>
-<header><div class="eyebrow">Technical task · synthetic retailer</div><h1>Sales performance and business actions</h1>
-<p>The baseline covers 1 to 28 May 2026 and the current period covers 1 to 28 June 2026. Both include a complete 30-day refund follow-up.</p>
+<header><div class="eyebrow">Technical task · synthetic automotive supplier</div><h1>Sales performance and business actions</h1>
+<p>The baseline covers 1 to 28 May 2026 and the current period covers 1 to 28 June 2026. Both include a complete 30-day credit follow-up. All data is synthetic and generated locally.</p>
 <p class="muted">This report uses the submitted calculations. Matching runs can still contain calculation errors.</p></header>{empty}
 <section><h2>Business recommendation</h2><div class="narrative">{narrative}</div></section>
 <section><h2>Overall performance</h2><div class="scroll">{chart}</div><div class="scroll"><table><thead><tr><th scope="col">Measure</th><th scope="col">Baseline</th><th scope="col">Current</th><th scope="col">Change</th><th scope="col">Change %</th></tr></thead><tbody>{''.join(overall)}</tbody></table></div>
-<p><small>Net revenue = gross sales − refunds. Contribution = net revenue − product costs − fulfilment costs. Contribution excludes fixed overhead, tax and acquisition spend. It is not profit. Refunded orders still incur product and fulfilment costs.</small></p>
-<p><small>Ratios divide period totals. Contribution margin divides contribution by net revenue. The refund ratio divides refunds by gross sales. Change % uses the absolute baseline. n/a marks a zero denominator. pp means percentage points.</small></p></section>
-<section><h2>Channel and category changes</h2><p class="muted">Sorted by the size of the contribution change. These figures do not show what caused the change.</p>
-<div class="scroll"><table><thead><tr><th scope="col">Channel / category</th><th scope="col">Baseline net revenue</th><th scope="col">Current net revenue</th><th scope="col">Baseline contribution</th><th scope="col">Current contribution</th><th scope="col">Contribution change</th><th scope="col">Baseline refunds / gross</th><th scope="col">Current refunds / gross</th></tr></thead><tbody>{''.join(segment_rows)}</tbody></table></div></section>
+<p><small>Customer credits are issued for returned parts. Net revenue = gross sales − customer credits. Contribution = net revenue − part costs − fulfilment costs. Contribution excludes fixed overhead, tax and acquisition spend. It is not profit. Orders with credits still incur part and fulfilment costs.</small></p>
+<p><small>Ratios divide period totals. Contribution margin divides contribution by net revenue. The credit-to-sales ratio divides customer credit value by gross sales. It compares money values, not the proportion of parts returned. Change % uses the absolute baseline. n/a marks a zero denominator. pp means percentage points.</small></p></section>
+<section><h2>Changes by customer channel and component family</h2><p class="muted">Sorted by the size of the contribution change. These figures do not show what caused the change.</p>
+<div class="scroll"><table><thead><tr><th scope="col">Customer channel / component family</th><th scope="col">Baseline net revenue</th><th scope="col">Current net revenue</th><th scope="col">Baseline contribution</th><th scope="col">Current contribution</th><th scope="col">Contribution change</th><th scope="col">Baseline credits / gross</th><th scope="col">Current credits / gross</th></tr></thead><tbody>{''.join(segment_rows)}</tbody></table></div></section>
 <section><h2>Data quality</h2><table><tbody>{quality_rows}</tbody></table><p><small>Order preparation produces these counts. SQL calculates performance for completed orders.</small></p></section>
 <footer>Opportunity estimates illustrate a possible outcome under the stated assumptions. They are not forecasts or realised savings.</footer>
 </main></body></html>
