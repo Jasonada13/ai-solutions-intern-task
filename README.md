@@ -8,7 +8,7 @@ Allow about one hour, including reading and notes. There is no hard time limit. 
 
 A fictional supplier sells components to vehicle manufacturers, parts distributors, and workshop networks. Its senior team wants to understand why sales increased while contribution weakened, and what to do next. Compare two equal periods. The `baseline` covers 1 to 28 May 2026, and `current` covers 1 to 28 June 2026. Both have the same completed 30-day follow-up for customer credits on returned components.
 
-You will work with 200,000 generated base orders, plus repeated deliveries, invalid rows, products, and customer credits. The dataset fits on a laptop without cloud infrastructure or distributed processing.
+You will work with 20,000 generated base orders, plus repeated deliveries, invalid rows, products, and customer credits. The dataset fits on a laptop without cloud infrastructure or distributed processing.
 
 Contribution means net revenue minus component and fulfilment costs. It excludes fixed overhead, tax, and acquisition spend, so it is not profit. All money is in GBP pence.
 
