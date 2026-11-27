@@ -1,0 +1,19 @@
+name: Starter checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python run.py --check-setup
+      - run: python -m unittest discover -s tests
+      - run: python run.py --check-repro --orders 2000
+      - run: python package_submission.py
