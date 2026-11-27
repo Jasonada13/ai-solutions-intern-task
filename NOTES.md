@@ -6,7 +6,7 @@ Keep the two section headings below. For the supplied HTML report, replace the b
 
 <!-- Explain the period change using at least two corrected figures. -->
 <!-- Follow this guidance in either this section or your separate report, including PowerPoint or Power BI. -->
-<!-- Identify a material channel/category segment, recommend an action and quantify an illustrative opportunity. -->
+<!-- Identify a material segment by customer channel and component family. Recommend an action and quantify an illustrative opportunity. -->
 <!-- State the estimate's assumption or limitation. Treat it as an illustration, not a forecast or proof of causality. -->
 <!-- If your work is incomplete, identify the result you cannot yet rely on. -->
 

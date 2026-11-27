@@ -4,20 +4,24 @@ Use these rules for your implementation and tests. They define all the business 
 
 ## Dataset
 
-`python3 run.py --check-repro` generates the default data locally with generator version `v4`, seed `42` and `200000` base orders. Of the base orders, 45% belong to `baseline` and 55% to `current`. Duplicate order deliveries and invalid rows add about 1% each. The default dataset contains 204,000 order rows, 54,312 refund deliveries and 16 products. The manifest records exact file row counts and SHA-256 hashes.
+`python3 run.py --check-repro` generates the default data locally with generator version `v5`, seed `42`, and `200000` base orders. Of the base orders, 45% belong to `baseline` and 55% to `current`. Duplicate order deliveries and invalid rows add about 1% each. The default dataset contains 204,000 order rows, 54,312 customer credit deliveries, and 16 generic products. The manifest records exact file row counts and SHA-256 hashes.
 
-| Period | Sales dates | Refund coverage |
+The generator is deterministic. All companies, product codes such as `P001`, prices, volumes, and patterns are invented for this task. No data is sourced or derived from a real company. These values are not industry benchmarks, and no automotive knowledge is required.
+
+| Period | Sales dates | Customer credit coverage |
 | --- | --- | --- |
 | `baseline` | 1 to 28 May 2026 | Completed 30-day follow-up |
 | `current` | 1 to 28 June 2026 | Completed 30-day follow-up |
 
-All supplied refunds fall within the relevant follow-up, so no timestamp or cutoff calculation is needed. Each order contains one product and may contain multiple units. The catalog has four categories. Channels are `app`, `partner` and `web`. Orders have `completed` or `cancelled` status. Some completed orders have no refunds.
+All supplied customer credits fall within the relevant follow-up, so no timestamp or cutoff calculation is needed. Each order contains one product and may contain multiple units. The `channel` field identifies the customer channel, `vehicle_manufacturer`, `parts_distributor`, or `workshop_network`. The `category` field identifies the component family, `braking`, `filtration`, `sensors`, or `electrical`. Orders have `completed` or `cancelled` status. Some completed orders have no customer credits.
 
-Money is integer GBP pence. Gross sales are after discounts and before refunds. Product unit costs are fixed across both periods. Completed orders incur product and fulfilment costs even when refunded. Do not recover returned-stock costs. Contribution excludes fixed overhead, tax and acquisition spend.
+Customer credits reduce sales values for returned components. This task uses simplified accounting rules. Money is integer GBP pence. Gross sales are after discounts and before customer credits. Product unit costs are fixed across both periods. Completed orders retain their component and fulfilment costs after a credit. Do not recover returned-stock costs. Contribution excludes fixed overhead, tax, and acquisition spend.
 
 ## Files, records and tables
 
 The supplied `models.py` defines these records. CSV headers and SQLite column names use the same field names.
+
+The schema keeps its `refund` identifiers for customer credits. `Refund`, `data/refunds.csv`, and the `refunds` table contain credit records. `refund_id` identifies a credit, and `refund_pence` is its value. The summary's `refunded_orders` counts orders with at least one credit. The manifest's `refund_follow_up_days` records the credit follow-up period. Keep these names unchanged.
 
 | Record / file / table | Fields in order |
 | --- | --- |
@@ -30,7 +34,7 @@ Every `RawOrder` field is a string. In `Order`, quantity and money fields are in
 
 IDs are nonempty and case-sensitive, with no surrounding whitespace. Product IDs are unique and the catalog is valid. Periods are valid `baseline` or `current` values. Channels and statuses are valid after `strip().lower()`. Quantity and money strings may be malformed or outside the permitted range. Use only the rejection categories specified below.
 
-Valid duplicate order rows contain identical normalized values. There are no conflicting revisions. Refund records are valid but may repeat. Records with the same `refund_id` have identical values. Different refund IDs with the same amount are separate refunds. Refunds may refer to missing, rejected or cancelled orders. Exclude these from all calculations.
+Valid duplicate order rows contain identical normalized values. There are no conflicting revisions. Customer credit records are valid but may repeat. Records with the same `refund_id` have identical values. Different credit IDs with the same amount are separate credits. Credits may refer to missing, rejected, or cancelled orders. Exclude these from all calculations.
 
 The pipeline rebuilds the database each run. `orders.order_id` and `products.product_id` are unique. The `refunds` table has no uniqueness constraint. SQL receives the accepted orders returned by your Python function, including valid cancelled orders.
 
@@ -76,31 +80,31 @@ rejected_rows = invalid_values + unknown_product
 
 ## SQL performance summary
 
-Write one SELECT in `analysis.sql`. CTEs are allowed. Join completed accepted orders to their products and return one row per period, channel and category. Sort by period with `baseline` before `current`, then channel, then category.
+Write one SELECT in `analysis.sql`. CTEs are allowed. Join completed accepted orders to their products and return one row per period, customer channel, and component family. Sort by period with `baseline` before `current`, then channel, then category.
 
 Return these columns in exactly this order:
 
 | Column | Meaning |
 | --- | --- |
 | `period` | `baseline` or `current`. |
-| `channel` | Normalized sales channel. |
-| `category` | Product category. |
+| `channel` | Normalized customer channel. |
+| `category` | Component family. |
 | `completed_orders` | Number of eligible orders. |
 | `gross_pence` | Total gross sales. |
-| `refund_pence` | Total eligible refund value, counting each refund ID once. |
-| `net_revenue_pence` | Gross sales minus refunds. |
-| `product_cost_pence` | Sum of each order's quantity multiplied by product unit cost. |
+| `refund_pence` | Total eligible customer credit value, counting each credit ID once. |
+| `net_revenue_pence` | Gross sales minus customer credits. |
+| `product_cost_pence` | Sum of each order's quantity multiplied by component unit cost. |
 | `fulfilment_cost_pence` | Total order fulfilment cost. |
-| `contribution_pence` | Net revenue minus product and fulfilment costs. |
-| `refunded_orders` | Number of eligible orders with at least one refund, not number of refund events. |
+| `contribution_pence` | Net revenue minus component and fulfilment costs. |
+| `refunded_orders` | Number of eligible orders with at least one customer credit, not number of credit events. |
 
-Each order contributes to counts, gross sales and costs once, regardless of how many refund rows it has. Keep completed orders with no refunds. Deduplicate refunds by `refund_id`. Do not use `SUM(DISTINCT amount)`, which would combine separate refunds with equal amounts. Count and money results must be integers. Negative contribution is valid. Empty inputs should produce no result rows and a header-only summary CSV.
+Each order contributes to counts, gross sales, and costs once, regardless of how many customer credit rows it has. Keep completed orders with no credits. Deduplicate credits by `refund_id`. Do not use `SUM(DISTINCT amount)`, which would combine separate credits with equal amounts. Count and money results must be integers. Negative contribution is valid. Empty inputs should produce no result rows and a header-only summary CSV.
 
 The supplied `query_summary(orders, refunds, products, query)` helper uses this schema for small SQL tests. See the imports in `tests/test_candidate.py`. Build test records directly, independently of the generated totals. The supplied tests check that the pipeline runs and pass before you repair the starter.
 
 ## Supplied report and reproduction
 
-The report sums segment counts and money values to compare the periods overall. Contribution margin is total contribution divided by total net revenue. Refund ratio is total refunds divided by total gross sales. Calculate these ratios from totals; do not average segment ratios. The report handles zero denominators and negative values. It includes segment changes, quality counts and only the `Business recommendation` section of `NOTES.md`. It escapes candidate text so the browser cannot execute it as HTML.
+The report sums segment counts and money values to compare the periods overall. Contribution margin is total contribution divided by total net revenue. Credit ratio is total customer credits divided by total gross sales. This compares money values. The dataset contains no returned-unit counts. Calculate these ratios from totals. Do not average segment ratios. The report handles zero denominators and negative values. It includes segment changes, quality counts, and only the `Business recommendation` section of `NOTES.md`. It escapes candidate text so the browser cannot execute it as HTML.
 
 You can use the supplied HTML as your business report or submit a separate file, including PowerPoint or Power BI, as described in the [README](README.md). For a separate report, put its archived filename in the business section of `NOTES.md` instead of repeating the narrative. The generated HTML remains one of the five required output files.
 

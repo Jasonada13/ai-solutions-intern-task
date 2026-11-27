@@ -1,4 +1,3 @@
-"""Tests for the supplied pipeline. Candidate tests cover the business calculations."""
 import contextlib
 import csv
 import io
@@ -21,7 +20,7 @@ from report import business_notes, render_report
 
 ROOT = Path(__file__).resolve().parents[1]
 EMPTY_QUERY = "SELECT " + ", ".join(
-    ("'baseline'" if i == 0 else "'web'" if i == 1 else "'home'" if i == 2 else "0")
+    ("'baseline'" if i == 0 else "'vehicle_manufacturer'" if i == 1 else "'filtration'" if i == 2 else "0")
     + f" AS {name}" for i, name in enumerate(run.COLUMNS)) + " WHERE 0"
 
 
@@ -92,14 +91,14 @@ class TestScaffold(unittest.TestCase):
         self.assertIn("Recommendation not supplied.", empty)
         self.assertIn("The query returned no completed orders", empty)
         self.assertIn("n/a", empty)
-        rows = [("current", "<script>alert(1)</script>", "home&away", 1, 100, 100, 0, 100, 50, -150, 1)]
+        rows = [("current", "<script>alert(1)</script>", "sensors&controls", 1, 100, 100, 0, 100, 50, -150, 1)]
         html = render_report(run.COLUMNS, rows, quality,
                              "## Business recommendation\n<img src=x onerror=alert(2)>\n## Method and scale\nSECRET METHOD")
         self.assertNotIn("<script>", html)
         self.assertNotIn("<img", html)
         self.assertNotIn("SECRET METHOD", html)
         self.assertIn("&lt;img", html)
-        self.assertIn("home&amp;away", html)
+        self.assertIn("sensors&amp;controls", html)
         self.assertIn("−£1.50", html)
 
     def test_pipeline_proof_manifest_and_archive(self):

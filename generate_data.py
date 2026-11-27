@@ -6,7 +6,7 @@ from pathlib import Path
 from models import Product, RawOrder, Refund
 
 
-GENERATOR_VERSION = "v4"
+GENERATOR_VERSION = "v5"
 DEFAULT_ORDERS = 200000
 DEFAULT_SEED = 42
 PERIODS = {
@@ -36,7 +36,7 @@ def generate_data(folder: Path, base_orders: int = DEFAULT_ORDERS, seed: int = D
     if base_orders < 0:
         raise ValueError("--orders must be nonnegative")
     folder.mkdir(parents=True, exist_ok=True)
-    categories = [("essentials", 1200), ("home", 3500), ("technology", 6000), ("leisure", 2200)]
+    categories = [("braking", 1200), ("filtration", 3500), ("sensors", 6000), ("electrical", 2200)]
     products = [Product(f"P{index * 4 + variant + 1:03d}", category, cost + variant * 150)
                 for index, (category, cost) in enumerate(categories) for variant in range(4)]
     with (folder / "products.csv").open("w", encoding="utf-8", newline="") as handle:
@@ -62,15 +62,15 @@ def generate_data(folder: Path, base_orders: int = DEFAULT_ORDERS, seed: int = D
                 category_index = 0 if choice < 10 else 1 if choice < 40 else 2 if choice < 80 else 3
             product = products[category_index * 4 + rng.below(4)]
             channel_pick = rng.below(100)
-            channel = "web" if channel_pick < 45 else "app" if channel_pick < 75 else "partner"
+            channel = "vehicle_manufacturer" if channel_pick < 45 else "parts_distributor" if channel_pick < 75 else "workshop_network"
             status = "cancelled" if rng.below(100) < 5 else "completed"
             quantity = 1 + rng.below(3)
             price_percent = 220 if period == "baseline" else 180
-            if period == "current" and product.category == "leisure":
+            if period == "current" and product.category == "electrical":
                 price_percent = 205
             gross = quantity * product.unit_cost_pence * price_percent // 100 + rng.below(101)
             fulfilment = 350 + rng.below(151) + (250 if period == "current" else 0)
-            if channel == "partner":
+            if channel == "workshop_network":
                 fulfilment += 150
             order_id = f"O{index + 1:08d}"
             raw = RawOrder(order_id, period,
@@ -90,7 +90,7 @@ def generate_data(folder: Path, base_orders: int = DEFAULT_ORDERS, seed: int = D
                 order_rows += 1
 
             probability = 10 if period == "baseline" else 22
-            if period == "current" and product.category == "technology" and channel == "partner":
+            if period == "current" and product.category == "sensors" and channel == "workshop_network":
                 probability = 44
             if rng.below(100) < probability:
                 split = index % 5 == 0
