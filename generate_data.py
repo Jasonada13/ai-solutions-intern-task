@@ -6,8 +6,8 @@ from pathlib import Path
 from models import Product, RawOrder, Refund
 
 
-GENERATOR_VERSION = "v5"
-DEFAULT_ORDERS = 200000
+GENERATOR_VERSION = "v6"
+DEFAULT_ORDERS = 20000
 DEFAULT_SEED = 42
 PERIODS = {
     "baseline": {"start": "2026-05-01", "end_inclusive": "2026-05-28", "refund_follow_up_days": 30},

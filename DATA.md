@@ -4,7 +4,7 @@ Use these rules for your implementation and tests. They define all the business 
 
 ## Dataset
 
-`python3 run.py --check-repro` generates the default data locally with generator version `v5`, seed `42`, and `200000` base orders. Of the base orders, 45% belong to `baseline` and 55% to `current`. Duplicate order deliveries and invalid rows add about 1% each. The default dataset contains 204,000 order rows, 54,312 customer credit deliveries, and 16 generic products. The manifest records exact file row counts and SHA-256 hashes.
+`python3 run.py --check-repro` generates the default data locally with generator version `v6`, seed `42`, and `20000` base orders. Of the base orders, 45% belong to `baseline` and 55% to `current`. Duplicate order deliveries and invalid rows add about 1% each. The default dataset contains 20,400 order rows, 5,443 customer credit deliveries, and 16 generic products. The manifest records exact file row counts and SHA-256 hashes.
 
 The generator is deterministic. All companies, product codes such as `P001`, prices, volumes, and patterns are invented for this task. No data is sourced or derived from a real company. These values are not industry benchmarks, and no automotive knowledge is required.
 

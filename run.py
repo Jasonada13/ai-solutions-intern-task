@@ -130,7 +130,7 @@ def run_once(root: Path, *, base_orders: int, seed: int) -> dict[str, str]:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Generate data and rebuild the task's output files offline.")
-    parser.add_argument("--orders", type=int, default=DEFAULT_ORDERS, help="number of base orders, default 200000")
+    parser.add_argument("--orders", type=int, default=DEFAULT_ORDERS, help="number of base orders, default %(default)s")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check-setup", action="store_true", help="check environment and generator only")
